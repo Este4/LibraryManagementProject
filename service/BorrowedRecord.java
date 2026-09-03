@@ -22,21 +22,36 @@ public class BorrowedRecord {
     }
 
     public boolean borrowBook(Member member, TitleBook titleBook, EditBook book) {
-        if(!member.canBorrowedMore()){
-            System.out.println("đã đạt giới hạn mượn sách");
+        // đã mượn sách này chưa
+        if(member.getBorrowedBook().contains(book.getEditId())){
+            System.out.println("Bạn đã mượn cuốn này ròi!");
             return false;
         }
-        if(book.getAvailabeQuantity() != 0){
+        // có thể mượn thêm đươcj không
+        if(!member.canBorrowedMore()){
+            System.out.println(">>Đã đạt đến giới hạn mượn, không thể mượn thêm được!");
+            return false;
+        }
+        // còn hàng không
+        if(book.getAvailabeQuantity() <= 0){
             titleBook.attach(member);
+            System.out.println("bạn đã vào hành chờ");
             return false;
         }
         //neu muon duoc
         int currentQty = book.getAvailabeQuantity();
         book.setAvailabeQuantity(currentQty - 1);
         member.addBorrowedBook(book.getEditId());
-        
-        
-        return false;
+        BorrowAction action =  new BorrowAction
+        (       member,                     // ai
+                book,                       // sách gì
+                ActionTypeEnum.BORROW,      // hành động
+                LocalDateTime.now().toString());// thời gian 
+        undoStack.push(action);
+        history.add(action);
+        redoStack = new MyStack<>();
+        System.out.println("Mượn sách thành công!!");
+        return true;
     }
 
     public boolean returnBook(Member member, TitleBook titleBook, EditBook book) {
