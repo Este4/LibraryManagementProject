@@ -9,6 +9,8 @@ import model.EditBook;
 import model.Member;
 import model.TitleBook;
 import enums.ActionTypeEnum;
+import enums.BorrowResult;
+import enums.BorrowReturnResult;
 
 public class BorrowedRecord {
     private MyStack<BorrowAction> undoStack;
@@ -21,33 +23,54 @@ public class BorrowedRecord {
         this.history = new ArrayList<>();
     }
 
-    public boolean borrowBook(Member member, TitleBook titleBook, EditBook book) {
-        if(!member.canBorrowedMore()){
-            System.out.println("đã đạt giới hạn mượn sách");
-            return false;
+    public BorrowResult borrowBook(Member member, TitleBook titleBook, EditBook book) {
+        // đã mượn sách này chưa
+        if(member.getBorrowedBook().contains(book.getEditId())){
+            return BorrowResult.ALREADY_BORROWED;
         }
-        if(book.getAvailabeQuantity() != 0){
+        // có thể mượn thêm đươcj không
+        if(!member.canBorrowedMore()){
+            return BorrowResult.LIMIT_REACHED;
+        }
+        // còn hàng không
+        if(book.getAvailabeQuantity() <= 0){
             titleBook.attach(member);
-            return false;
+            return BorrowResult.OUT_OF_STOCK_QUEUED;
         }
         //neu muon duoc
         int currentQty = book.getAvailabeQuantity();
         book.setAvailabeQuantity(currentQty - 1);
         member.addBorrowedBook(book.getEditId());
-        
-        
-        return false;
+        BorrowAction action =  new BorrowAction
+        (       member,                     // ai
+                book,                       // sách gì
+                ActionTypeEnum.BORROW,      // hành động
+                LocalDateTime.now().toString());// thời gian 
+        undoStack.push(action);
+        history.add(action);
+        redoStack = new MyStack<>(); 
+        return BorrowResult.SUCCESS;
     }
 
-    public boolean returnBook(Member member, TitleBook titleBook, EditBook book) {
-        // TODO: ngược lại với borrowBook:
-        //       - book.setAvailabeQuantity(số lượng + 1)
-        //       - member.removeBorrowedBook(book.getEditId())
-        //       - tạo BorrowAction với type = RETURN, push vào undoStack, add vào history
-        //       - xóa redoStack
-        //       - GỌI titleBook.notifyObservers() nếu số lượng vừa tăng từ 0 lên 1
-        //         (đây chính là chỗ Observer pattern kích hoạt!)
-        return false;
+    public BorrowReturnResult returnBook(Member member, TitleBook titleBook, EditBook book) {
+        if(!member.getBorrowedBook().contains(book.getEditId())){
+            return BorrowReturnResult.NOT_BORROWED;
+        }
+        int currentQty = book.getAvailabeQuantity();
+        book.setAvailabeQuantity(currentQty + 1);
+        member.removeBorrowedBook(book.getEditId());
+        BorrowAction action = new BorrowAction(
+                member,
+                book,
+                ActionTypeEnum.RETURN,
+                LocalDateTime.now().toString());
+        undoStack.push(action);
+        history.add(action);
+        redoStack = new MyStack<>();
+        if(currentQty == 0){
+         titleBook.notifyObserver();
+        }
+        return BorrowReturnResult.SUCCESS;
     }
 
     public boolean undo() {
