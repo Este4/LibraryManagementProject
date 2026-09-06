@@ -11,6 +11,8 @@ import model.TitleBook;
 import enums.ActionTypeEnum;
 import enums.BorrowResult;
 import enums.BorrowReturnResult;
+import enums.BorrowUndoResult;
+import enums.BorrowRedoResult;
 
 public class BorrowedRecord {
     private MyStack<BorrowAction> undoStack;
@@ -34,9 +36,12 @@ public class BorrowedRecord {
         }
         // còn hàng không
         if(book.getAvailabeQuantity() <= 0){
-            titleBook.attach(member);
-            return BorrowResult.OUT_OF_STOCK_QUEUED;
+        if(titleBook.getTotalAvailableQuantity() > 0){
+            return BorrowResult.TRY_ANOTHER_EDITION; 
         }
+        titleBook.attach(member);
+        return BorrowResult.OUT_OF_STOCK_QUEUED;
+        }   
         //neu muon duoc
         int currentQty = book.getAvailabeQuantity();
         book.setAvailabeQuantity(currentQty - 1);
@@ -73,25 +78,56 @@ public class BorrowedRecord {
         return BorrowReturnResult.SUCCESS;
     }
 
-    public boolean undo() {
-        // TODO: 1. nếu undoStack.isEmpty() → in "Không có gì để undo", return false
-        //       2. BorrowAction action = undoStack.pop()
-        //       3. LÀM NGƯỢC LẠI hành động đó (xem giải thích bên dưới)
-        //       4. redoStack.push(action)
-        //       5. return true
-        return false;
+    public BorrowUndoResult undo() {
+        if (undoStack.isEmpty()){
+            return BorrowUndoResult.NOTHING_TO_UNDO;
+        }
+        BorrowAction action = undoStack.pop();
+        Member m = action.getMember();
+        EditBook b = action.getBook();
+       
+        if(action.getType() == ActionTypeEnum.BORROW){
+             int currentQty = b.getAvailabeQuantity();
+            b.setAvailabeQuantity(currentQty + 1);
+            m.removeBorrowedBook(b.getEditId());
+        } else{
+            int currentQty = b.getAvailabeQuantity();
+             if (currentQty <= 0) {
+                undoStack.push(action);  
+                return BorrowUndoResult.CAN_NOT_UNDO;
+            }
+            b.setAvailabeQuantity(currentQty - 1);
+            m.addBorrowedBook(b.getEditId());
+        }
+       redoStack.push(action);
+       return BorrowUndoResult.SUCCESS;
     }
 
-    public boolean redo() {
-        // TODO: 1. nếu redoStack.isEmpty() → return false
-        //       2. BorrowAction action = redoStack.pop()
-        //       3. LÀM LẠI hành động đó (giống như lúc đầu)
-        //       4. undoStack.push(action)
-        //       5. return true
-        return false;
+    public BorrowRedoResult redo() {
+        if(redoStack.isEmpty()){
+            return BorrowRedoResult.NOTHING_TO_REDO;
+        }
+        BorrowAction action = redoStack.pop();
+        Member m = action.getMember();
+        EditBook b = action.getBook();
+        if(action.getType() == ActionTypeEnum.BORROW){
+             int currentQty = b.getAvailabeQuantity();
+            b.setAvailabeQuantity(currentQty - 1);
+            m.addBorrowedBook(b.getEditId());
+        }else{
+            int currentQty = b.getAvailabeQuantity();
+            b.setAvailabeQuantity(currentQty + 1);
+            m.removeBorrowedBook(b.getEditId());
+        }
+        undoStack.push(action);
+        return BorrowRedoResult.SUCCESS;
     }
 
-    public void readBorrowHistory() {
-        // TODO: duyệt qua `history`, in ra action.toDisplayString() cho từng cái
+    public List<String> readBorrowHistory() {
+        List<String> result = new ArrayList<>();
+            for (BorrowAction action : history) {
+                result.add(action.showInfor());
+            }
+        return result;
     }
 }

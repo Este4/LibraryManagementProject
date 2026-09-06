@@ -10,16 +10,8 @@ import java.util.Stack;
 import util.Menu;
 
 public class main {
-    public static void main(String[] args) {
-        MyStack<String> test1 = new MyStack<>();
-        //chưa có gì nên đang null
-        System.out.println(test1.isEmpty());
-        // đã có đĩa nên null
-        test1.push("dia 1");
-        System.out.println(test1.isEmpty());
-        //pop là lấy ra rồi, nên sẽ true
-        test1.pop();
-        System.out.println(test1.isEmpty());
-    
+     public static void main(String[] args) {
+        MenuView menuView = new MenuView();
+        menuView.start();
     }
 }

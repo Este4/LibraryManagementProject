@@ -13,6 +13,13 @@ public class Admin extends User{
     @Override
     public void showInfor() {
        String str = String.format("%s|%s|%s", id, userName, password);
+        System.out.println(str);
+    }
+
+    @Override
+    public String toString() {
+        String str = String.format("%s|%s|%s", id, userName, password);
+        return str;
     }
     
 }

@@ -56,7 +56,6 @@ public abstract class FileHelper<T>{
                 writer.write("\n");
             }
             //writer.close();//đóng file lại
-            System.out.println("Save finish");
             return true;//return
         }catch(Exception e){
             System.out.println("SaveToFile error: " + e);

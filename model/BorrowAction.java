@@ -7,7 +7,7 @@ package model;
 import enums.ActionTypeEnum;
 
 public class BorrowAction {
-     private Member member;
+    private Member member;
     private EditBook book;
     private ActionTypeEnum type;
     private String timestamp;
@@ -18,21 +18,25 @@ public class BorrowAction {
         this.type = type;
         this.timestamp = timestamp;
     }
-    public Member getMember() { return member; }
-    public EditBook getBook() { return book; }
-    public ActionTypeEnum getType() { return type; }
-    public String getTimestamp() { return timestamp; }
-
+    public Member getMember() {
+        return member; }
+    public EditBook getBook() {
+        return book; }
+    public ActionTypeEnum getType() {
+        return type; }
+    public String getTimestamp() {
+        return timestamp; }
+    
     @Override
     public String toString() {
         return String.format("%s|%s|%s|%s",
                 timestamp, member.getId(), book.getEditId(), type);
     }
-    public void showInfor(){
+    public String showInfor(){
         String str = (type == ActionTypeEnum.BORROW) ? "đã mượn" : "đã trả";
         String str1 = String.format("[%s] %s %s sách %s",
                     timestamp, member.getUserName(), str, book.getEditId());
-        System.out.println(str1);
+        return str1;
     }
     
 }

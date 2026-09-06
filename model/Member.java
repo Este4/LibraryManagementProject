@@ -18,10 +18,10 @@ public class Member extends User implements Observer {
     private MemberStatusEnum statusMem;
     private List<String> borrowedBook;
 
-    public Member(String id, String userName, String password) {
+    public Member(String id, String userName, String password, MemberStatusEnum statusMem) {
         super(id, userName, password);
-        this.inbox = "";
         this.statusMem = statusMem;
+        this.inbox = "";
         this.maxBooksAllowed = statusMem.getMaxBookAllowed();
         this.borrowedBook = new ArrayList<>();
     }
@@ -46,7 +46,31 @@ public class Member extends User implements Observer {
     public List<String> getBorrowedBook() {
         return borrowedBook;
     }
+
+    public MemberStatusEnum getStatusMem() {
+        return statusMem;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+    
+    public void setStatusMem(MemberStatusEnum statusMem) {
+        this.statusMem = statusMem;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
     //setter
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
     public void setInbox(String inbox) {
         this.inbox = inbox;
@@ -72,11 +96,8 @@ public class Member extends User implements Observer {
         return borrowedBook.size() < maxBooksAllowed;
     }
     public void addBorrowedBook(String bookId) {
-       if(borrowedBook.contains(bookId)){
+       if(!borrowedBook.contains(bookId)){
            borrowedBook.add(bookId);
-       }
-       else{
-           System.out.println(">>Error, this bookid was existing");
        }
     }
 

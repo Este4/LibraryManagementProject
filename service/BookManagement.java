@@ -4,89 +4,265 @@
  */
 package service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import model.Book;
+import java.util.List;
+import java.util.StringTokenizer;
+import model.TitleBook;
+import model.EditBook;
 import util.Inputter;
 import util.Menu;
+import util.FileHelper;
+import enums.BookManagementResult;
 public class BookManagement{
-    private ArrayList<Book> bookList = new ArrayList<>();
-    
-    private Book searchById(String id){
-         for(Book b : bookList){
-             if(b.getBookID().equals(id)){
-                 return b;
-             }
-         }
-           return null;
+   public ArrayList<TitleBook> tList = new ArrayList<>();
+   public ArrayList<EditBook> eList = new ArrayList<>();
+   private FileHelper<EditBook> FileEditBook = new FileHelper<EditBook>(eList) {
+       @Override
+       public EditBook handleLine(String line) {
+           try{
+           StringTokenizer st = new StringTokenizer(line, "|");
+           String eId = st.nextToken().trim();
+           String tId = st.nextToken().trim();
+           int eQty = Integer.parseInt(st.nextToken().trim());
+           LocalDate publishYear = LocalDate.parse(st.nextToken().trim());
+           return new EditBook(eId, tId, eQty, publishYear);
+           }catch(Exception e){
+               System.out.println("  [!] Skip invalid book line: " + line);
+                return null;
+           }
+       }
+   };
+   private FileHelper<TitleBook> FileTitleBook = new FileHelper<TitleBook>(tList) {
+       @Override
+       public TitleBook handleLine(String line) {
+           try{
+           StringTokenizer st = new StringTokenizer(line, "|");
+           String tId = st.nextToken().trim();
+           String tName = st.nextToken().trim();
+           String tAuthor = st.nextToken().trim();
+           String tGenre = st.nextToken().trim();
+           return new TitleBook(tId, tName, tAuthor, tGenre);
+           }catch(Exception e){
+               System.out.println("  [!] Skip invalid book line: " + line);
+                return null;
+           }
+       }
+   };
+   public EditBook searchBookByid(String eId){
+       for(EditBook e : eList){
+           if(e.getEditId().equals(eId)){
+               return e;
+           }
+       }
+       return null;
+   }
+   public TitleBook searchTitleByid(String tId){
+       for(TitleBook t : tList){
+           if(t.getMasterId().equals(tId)){
+               return t;
+           }
+       }
+       return null;
+   }
+    public List<TitleBook> searchByKeyword(String keyword) {
+    List<TitleBook> result = new ArrayList<>();
+    String lowerKeyword = keyword.toLowerCase();
+        for (TitleBook tb : tList) {
+            if (tb.getTitle().toLowerCase().contains(lowerKeyword)
+                || tb.getAuthor().toLowerCase().contains(lowerKeyword)
+                || tb.getMasterId().toLowerCase().contains(lowerKeyword)) {
+                result.add(tb);
+            }
+        }
+    return result;
     }
-    public void displayBook(){
-        for(Book b : bookList){
-            b.showInfor();
+    public BookManagementResult createTitle(String masterId, String title, String author, String genre) {
+        if (searchTitleByid(masterId) != null) {
+           return BookManagementResult.DUPLICATE_TITLE_ID;
+        }
+        tList.add(new TitleBook(masterId, title, author, genre));
+        saveAll();
+        return BookManagementResult.SUCCESS;
+    }
+    public void loadAll(){
+    FileEditBook.loadFromFile("EditBook.txt");
+    FileTitleBook.loadFromFile("TitleBook.txt");
+    for(EditBook e : eList){
+        TitleBook tb = searchTitleByid(e.getMasterId());
+        if (tb != null) {         
+            tb.addEdition(e);
         }
     }
-    public void deleteBook(){
-        System.out.println("-----------------DELETING BOOK ---------------------");
-        if(bookList.isEmpty()){
-            System.out.println("List is empty now");
-            System.out.println("Quiting...");
-            return;
+}
+    public void saveAll(){
+        FileEditBook.saveToFile("EditBook.txt");
+        FileTitleBook.saveToFile("TitleBook.txt");
+    }
+    public BookManagement(){
+        loadAll();
+    }
+    public BookManagementResult addEdition(String masterId, String editId, int qty, LocalDate publishYear) {
+    TitleBook tb = searchTitleByid(masterId);
+    if (tb == null) return BookManagementResult.TITLE_NOT_FOUND;
+    if (searchBookByid(editId) != null) return BookManagementResult.DUPLICATE_EDIT_ID;
+    if (qty < 0) return BookManagementResult.INVALID_QUANTITY;
+
+    int before = tb.getTotalAvailableQuantity();
+    EditBook newEdition = new EditBook(editId, masterId, qty, publishYear);
+    tb.addEdition(newEdition);
+    eList.add(newEdition);
+
+    if (before == 0 && qty > 0) {
+        tb.notifyObserver();
+    }
+    saveAll();
+    return BookManagementResult.SUCCESS;
+    }
+    public BookManagementResult updateQuantity(String editId, int newQty) {
+    EditBook e = searchBookByid(editId);
+    if (e == null) return BookManagementResult.EDIT_NOT_FOUND;
+    if (newQty < 0) return BookManagementResult.INVALID_QUANTITY;
+    TitleBook tb = searchTitleByid(e.getMasterId());
+        int before = (tb != null) ? tb.getTotalAvailableQuantity() : 0;
+
+        e.setAvailabeQuantity(newQty);
+
+        if (tb != null && before == 0 && tb.getTotalAvailableQuantity() > 0) {
+            tb.notifyObserver();
         }
-        String id = Inputter.getAString("Book to delete: ", "This fields cannot be empty!!!");
-        Book b = searchById(id);
-        if(b == null){
-            System.out.println("This Book wasn't existed");
+        saveAll();
+    return BookManagementResult.SUCCESS;
+    }
+    public BookManagementResult deleteEdition(String editId) {
+    EditBook e = searchBookByid(editId);
+    if (e == null) return BookManagementResult.EDIT_NOT_FOUND;
+    TitleBook tb = searchTitleByid(e.getMasterId());
+    if(tb != null){
+        tb.getEditions().remove(e);
+    }
+    eList.remove(e);
+    saveAll();
+    return BookManagementResult.SUCCESS;
+}  
+    public List<TitleBook> readAllTitles() {
+        return tList;
+    }
+
+    public List<EditBook> readAllEditions() {
+        return eList;
+    }
+
+    public List<EditBook> getEditionsOfTitle(String masterId) {
+        TitleBook tb = searchTitleByid(masterId);
+        if (tb == null) return new ArrayList<>();
+        return tb.getEditions();
+    }
+
+    public BookManagementResult updateTitle(String masterId, String newTitle,
+                                            String newAuthor, String newGenre) {
+        TitleBook tb = searchTitleByid(masterId);
+        if (tb == null) return BookManagementResult.TITLE_NOT_FOUND;
+
+        if (newTitle != null && !newTitle.isEmpty()) {
+            tb.setTitle(newTitle);
         }
-        else{
-            System.out.println("Book details:  ");
-            b.showInfor();
-            System.out.println("Are you sure?");
-            Menu choiceMenu = new Menu("", "Input number: ", "Out of the range!!!");
-            choiceMenu.addOption("(1) Yes");
-            choiceMenu.addOption("(2) No");
-            choiceMenu.print();
-            int choice = choiceMenu.getChoice();
-            switch(choice){
-                case 1:{
-                    bookList.remove(b);
-                    System.out.println("Deleting succesfully...");
-                    break;
-                }
-                case 2:{
-                    System.out.println("Canceling....");
-                    break;
+        if (newAuthor != null && !newAuthor.isEmpty()) {
+            tb.setAuthor(newAuthor);
+        }
+        if (newGenre != null && !newGenre.isEmpty()) {
+            tb.setGenre(newGenre);
+        }
+        saveAll();
+        return BookManagementResult.SUCCESS;
+    }
+
+    public BookManagementResult deleteTitle(String masterId) {
+        TitleBook tb = searchTitleByid(masterId);
+        if (tb == null) return BookManagementResult.TITLE_NOT_FOUND;
+        tList.remove(tb);
+        saveAll();
+        return BookManagementResult.SUCCESS;
+    }
+
+    public List<TitleBook> searchByGenre(String genre) {
+        List<TitleBook> result = new ArrayList<>();
+        for (TitleBook tb : tList) {
+            if (tb.getGenre().equalsIgnoreCase(genre)) {
+                result.add(tb);
+            }
+        }
+        return result;
+    }
+
+    public int getTotalBooks() {
+        int total = 0;
+        for (EditBook e : eList) {
+            total += e.getAvailabeQuantity();
+        }
+        return total;
+    }
+
+    public List<TitleBook> getOutOfStockTitles() {
+        List<TitleBook> result = new ArrayList<>();
+        for (TitleBook tb : tList) {
+            if (tb.getTotalAvailableQuantity() == 0) {
+                result.add(tb);
+            }
+        }
+        return result;
+    }
+
+    public List<TitleBook> getAvailableTitles() {
+        List<TitleBook> result = new ArrayList<>();
+        for (TitleBook tb : tList) {
+            if (tb.getTotalAvailableQuantity() > 0) {
+                result.add(tb);
+            }
+        }
+        return result;
+    }
+    public List<TitleBook> sortByTitle() {
+        List<TitleBook> sorted = new ArrayList<>(tList);
+        for (int i = 0; i < sorted.size() - 1; i++) {
+            for (int j = 0; j < sorted.size() - 1 - i; j++) {
+                if (sorted.get(j).getTitle().compareToIgnoreCase(sorted.get(j + 1).getTitle()) > 0) {
+                    TitleBook temp = sorted.get(j);
+                    sorted.set(j, sorted.get(j + 1));
+                    sorted.set(j + 1, temp);
                 }
             }
-        }   
-    }
-    public void updateBook(){
-        System.out.println("----------------------Updating book---------------------------");
-          if(bookList.isEmpty()){
-            System.out.println("List is empty now");
-            System.out.println("Quiting...");
-            return;
         }
-          String id = Inputter.getAString("Book to update: ", "Out of the choice");
-          Book b = searchById(id);
-          if(b == null){
-              System.out.println("This Book wasn't existed");
-          }else{
-              System.out.println("Book details: ");
-              b.showInfor();
-            
-                 String newtitle = Inputter.getAString("Title book to update: ");
-                 if(!newtitle.isEmpty()) b.setTitle(newtitle);
-                 
-                 String newAuthor = Inputter.getAString("Author book to update: ");
-                 if(!newAuthor.isEmpty()) b.setAuthor(newAuthor);
-                 
-                // int newYearPublication = Inputter.getAnInteger("New year Publication to update", "Out of the choice", 0, Integer.MAX_VALUE);
-                 String newGenre = Inputter.getAString("New genre to update: ");
-                 if(!newGenre.isEmpty()) b.setGenre(newGenre);
-                 
-               //  int newTotalQuantity = Inputter.getAnInteger("New total Quantity to update: ", "Out of the choice", 1, Integer.MAX_VALUE);
-               //  int NewavailableQuantity = Inputter.getAnInteger("New available Quantity to update: ", "Out of the choice", 1, Integer.MAX_VALUE);
-                 
-             }
-              
-    }    
+        return sorted;
+    }
+    public List<TitleBook> sortByAuthor() {
+        List<TitleBook> sorted = new ArrayList<>(tList);
+        for (int i = 0; i < sorted.size() - 1; i++) {
+            int minIdx = i;
+            for (int j = i + 1; j < sorted.size(); j++) {
+                if (sorted.get(j).getAuthor().compareToIgnoreCase(sorted.get(minIdx).getAuthor()) < 0) {
+                    minIdx = j;
+                }
+            }
+            if (minIdx != i) {
+                TitleBook temp = sorted.get(i);
+                sorted.set(i, sorted.get(minIdx));
+                sorted.set(minIdx, temp);
+            }
+        }
+        return sorted;
+    }
+    public List<EditBook> sortByPublicationYear() {
+        List<EditBook> sorted = new ArrayList<>(eList);
+        for (int i = 1; i < sorted.size(); i++) {
+            EditBook key = sorted.get(i);
+            int j = i - 1;
+            while (j >= 0 && sorted.get(j).getPublishYear().isAfter(key.getPublishYear())) {
+                sorted.set(j + 1, sorted.get(j));
+                j--;
+            }
+            sorted.set(j + 1, key);
+        }
+        return sorted;
+    }
 }

@@ -37,6 +37,32 @@ public class TitleBook implements Subject {
         this.waitingQueue = new MyPriorityQueues<>(memberPriority);
     }
 
+    public String getMasterId() {
+        return masterId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public String getGenre() {
+        return genre;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    
+    public void setAuthor(String author){
+        this.author = author;
+    }
+    public void setGenre(String genre){
+        this.genre = genre;
+    }
     @Override
     public void attach(Member member) {
           waitingCounter++;
@@ -58,7 +84,22 @@ public class TitleBook implements Subject {
             waitingQueue.enqueue(m);
         }
     }
+    
+    public void addEdition(EditBook edition) {
+        editions.add(edition);
+    }
 
+    public List<EditBook> getEditions() {
+        return editions;
+    }
+     public int getTotalAvailableQuantity() {
+        int total = 0;
+        for (EditBook e : editions) {      
+            total += e.getAvailabeQuantity();  
+        }
+        return total;
+    }
+    
     @Override
     public void notifyObserver() {
      if (waitingQueue.isEmpty()) {
@@ -66,5 +107,9 @@ public class TitleBook implements Subject {
     }
     Member nextMember = waitingQueue.dequeue();
     nextMember.update("Sách \"" + title + "\" đã có lại, mời bạn đến mượn trong 24h!");
+    }
+    @Override
+    public String toString() {
+        return String.format("%s|%s|%s|%s", masterId, title, author, genre);
     }
 }
