@@ -1,0 +1,6 @@
+T001|Harry Potter và Hòn đá Phù thủy|J.K. Rowling|Fantasy
+T002|Nhà Giả Kim|Paulo Coelho|Philosophy
+T003|Đắc Nhân Tâm|Dale Carnegie|Self-help
+T004|Clean Code|Robert C. Martin|Technology
+T005|Tuổi Trẻ Đáng Giá Bao Nhiêu|Rosie Nguyễn|Self-help
+T006|Clean code|rem|selff
